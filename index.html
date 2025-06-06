@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Calcula tu Indemnización/Prejubilación</title>
-  <!-- Vinculamos el CSS -->
+  <title>Calcula tu Indemnización o Prejubilación</title>
+  <!-- Vincula tu CSS existente (style.css) -->
   <link rel="stylesheet" href="style.css" />
   <!-- jsPDF desde CDN para generar PDF en el cliente -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -12,6 +12,9 @@
 <body>
   <div class="container">
     <h1 class="titulo-principal">Calcula tu Indemnización o Prejubilación</h1>
+    <p class="disclaimer">
+      Esto es una simulación aproximada no definitiva; siempre consulta con tu gestor o abogado.
+    </p>
 
     <!-- ============================= -->
     <!-- FORMULARIO PRINCIPAL -->
@@ -48,8 +51,8 @@
           id="fechaCese"
           name="fechaCese"
           placeholder="dd/MM/yyyy"
-          maxlength="10"
           value="31/12/2025"
+          maxlength="10"
           required
         />
         <p class="nota">
@@ -80,35 +83,20 @@
         />
       </div>
 
-      <div class="boton-container">
-        <button type="submit">Calcular</button>
+      <div class="campo-boton">
+        <button type="submit" class="btn-calcular">Calcular</button>
       </div>
     </form>
 
     <!-- ============================= -->
-    <!-- CONTENEDOR PARA RESULTADOS -->
+    <!-- RESULTADO DEL CÁLCULO (inicialmente oculto) -->
     <!-- ============================= -->
-    <div id="resultado" class="resultado" style="display: none;">
+    <div id="resultado" style="display: none;">
       <h2>Resultado del Cálculo</h2>
-
-      <p>
-        <strong>Edad a la fecha de cese:</strong>
-        <span id="txtEdad">--</span> años
-      </p>
-      <p>
-        <strong>Antigüedad en la empresa:</strong>
-        <span id="txtAntiguedad">--</span> años
-      </p>
-
-      <p>
-        <strong>Salario total (con complementos):</strong>
-        <span id="txtSalarioCon">--</span> €
-      </p>
-      <p>
-        <strong>Salario total (sin complementos):</strong>
-        <span id="txtSalarioSin">--</span> €
-      </p>
-
+      <p><strong>Edad a la fecha de cese:</strong> <span id="txtEdad">0</span> años</p>
+      <p><strong>Antigüedad en la empresa:</strong> <span id="txtAntiguedad">0.00</span> años</p>
+      <p><strong>Salario total (con complementos):</strong> <span id="txtSalarioCon">0.00</span> €</p>
+      <p><strong>Salario total (sin complementos):</strong> <span id="txtSalarioSin">0.00</span> €</p>
       <hr />
 
       <!-- ============================= -->
@@ -119,37 +107,44 @@
 
         <!-- 1) VOLUNTARIA 50 días -->
         <div id="volConContainer" class="tabla-contenedor" style="display: none;">
-          <h4>1) Indemnización VOLUNTARIA a 50 días – <em>CON complementos</em></h4>
+          <h4>1) Indemnización VOLUNTARIA a 50 días – CON complementos</h4>
           <table>
             <thead>
               <tr>
                 <th>Concepto</th>
+                <th>Detalle</th>
                 <th>Importe (€)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>Indemnización Bruta</td>
+                <td>(Salario total con complementos / 365) × (50 × antigüedad)</td>
                 <td id="volConBruta">0,00</td>
               </tr>
               <tr>
                 <td>Exento (hasta 180 000 €)</td>
+                <td>Min(Indemnización Bruta, 180 000 €)</td>
                 <td id="volConExento">0,00</td>
               </tr>
               <tr>
                 <td>Exceso sobre exento</td>
+                <td>Indemnización Bruta – Exento</td>
                 <td id="volConExceso">0,00</td>
               </tr>
               <tr>
                 <td>Base Imponible (70 % del exceso)</td>
+                <td>0,70 × Exceso</td>
                 <td id="volConBase">0,00</td>
               </tr>
               <tr>
                 <td>IRPF aproximado</td>
+                <td>Tramos progresivos sobre Base Imponible</td>
                 <td id="volConIrpf">0,00</td>
               </tr>
               <tr>
                 <td><strong>Indemnización Neta</strong></td>
+                <td>Indemnización Bruta – IRPF</td>
                 <td id="volConNeto">0,00</td>
               </tr>
             </tbody>
@@ -157,50 +152,53 @@
         </div>
 
         <div id="volSinContainer" class="tabla-contenedor" style="display: none;">
-          <h4>1) Indemnización VOLUNTARIA a 50 días – <em>SIN complementos</em></h4>
+          <h4>1) Indemnización VOLUNTARIA a 50 días – SIN complementos</h4>
           <table>
             <thead>
               <tr>
                 <th>Concepto</th>
+                <th>Detalle</th>
                 <th>Importe (€)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>Indemnización Bruta</td>
+                <td>(Salario fijo / 365) × (50 × antigüedad)</td>
                 <td id="volSinBruta">0,00</td>
               </tr>
               <tr>
                 <td>Exento (hasta 180 000 €)</td>
+                <td>Min(Indemnización Bruta, 180 000 €)</td>
                 <td id="volSinExento">0,00</td>
               </tr>
               <tr>
                 <td>Exceso sobre exento</td>
+                <td>Indemnización Bruta – Exento</td>
                 <td id="volSinExceso">0,00</td>
               </tr>
               <tr>
                 <td>Base Imponible (70 % del exceso)</td>
+                <td>0,70 × Exceso</td>
                 <td id="volSinBase">0,00</td>
               </tr>
               <tr>
                 <td>IRPF aproximado</td>
+                <td>Tramos progresivos sobre Base Imponible</td>
                 <td id="volSinIrpf">0,00</td>
               </tr>
               <tr>
                 <td><strong>Indemnización Neta</strong></td>
+                <td>Indemnización Bruta – IRPF</td>
                 <td id="volSinNeto">0,00</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 2) LEGAL → bloque único unificado -->
+        <!-- 2) LEGAL → bloque único unificado con tramos 45/33 días -->
         <div id="legalContainer" class="tabla-contenedor" style="display: none;">
-          <h4>2) Indemnización LEGAL</h4>
-          <p class="nota">
-            * Se aplica <strong>45 días/año</strong> para la antigüedad anterior al 
-            <strong>12/02/2012</strong>, y <strong>33 días/año</strong> para la antigüedad posterior al <strong>12/02/2012</strong>.
-          </p>
+          <h4>2) Indemnización LEGAL (45 / 33 días según antigüedad)</h4>
           <table>
             <thead>
               <tr>
@@ -210,41 +208,123 @@
             </thead>
             <tbody>
               <tr>
-                <td>— Antes 12/02/2012 (45 días/año)</td>
+                <td>Antes del 12/02/2012 (45 días/año)</td>
                 <td id="legAntesBruta">0,00</td>
               </tr>
               <tr>
-                <td>— Después 12/02/2012 (33 días/año)</td>
+                <td>Después del 12/02/2012 (33 días/año)</td>
                 <td id="legDespuesBruta">0,00</td>
               </tr>
               <tr>
-                <td><strong>— Indemnización Bruta TOTAL</strong></td>
+                <td><strong>Indemnización Bruta TOTAL</strong></td>
                 <td id="legTotalBruta">0,00</td>
               </tr>
               <tr>
-                <td>— Exento (hasta 180 000 €)</td>
+                <td>Exento (totalmente exento)</td>
                 <td id="legExento">0,00</td>
               </tr>
               <tr>
-                <td>— Exceso sobre exento</td>
+                <td>Exceso sobre exento</td>
                 <td id="legExceso">0,00</td>
               </tr>
               <tr>
-                <td>— Base Imponible (70 % del exceso)</td>
+                <td>Base Imponible (70 % del exceso)</td>
                 <td id="legBase">0,00</td>
               </tr>
               <tr>
-                <td>— IRPF aproximado</td>
+                <td>IRPF aproximado</td>
                 <td id="legIrpf">0,00</td>
               </tr>
               <tr>
-                <td><strong>— Indemnización Neta</strong></td>
+                <td><strong>Indemnización Neta</strong></td>
                 <td id="legNeto">0,00</td>
               </tr>
             </tbody>
           </table>
         </div>
+
+        <!-- 3) NUEVA SECCIÓN: Retenciones y Diferencias -->
+        <div
+          id="retencionesContainer"
+          class="tabla-contenedor"
+          style="display: none;"
+        >
+          <h4>3) Retenciones y Diferencias entre Voluntaria y Legal</h4>
+          <p class="nota">
+            • La indemnización <strong>LEGAL improcedente</strong> se considera 100 % exenta:  
+            <em>(no se practican retenciones de IRPF sobre la parte legal).</em><br/>
+            • Si la indemnización <strong>legal</strong> supera a la <strong>voluntaria</strong>, 
+            solo se tributa por el exceso que quede por encima de 180 000 €; 
+            ese exceso aparece desglosado en la columna “Diferencia” y sí lleva IRPF.<br/>
+            • Ejemplo de retención al 15 %: 
+            en la columna “Diferencia (IRPF 15 %)” mostramos cuánto sería si se aplicara un IRPF fijo del 15 % 
+            sobre la diferencia bruta (para comparar).
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Concepto</th>
+                <th>Voluntaria (€)</th>
+                <th>Legal (€)</th>
+                <th>Diferencia (€)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Indemnización Bruta</td>
+                <td id="retVolBruta">0,00</td>
+                <td id="retLegBruta">0,00</td>
+                <td id="retDifBruta">0,00</td>
+              </tr>
+              <tr>
+                <td>Exento (hasta 180 000 €)</td>
+                <td id="retVolExento">0,00</td>
+                <td id="retLegExento">0,00</td>
+                <td id="retDifExento">0,00</td>
+              </tr>
+              <tr>
+                <td>Exceso sobre exento</td>
+                <td id="retVolExceso">0,00</td>
+                <td id="retLegExceso">0,00</td>
+                <td id="retDifExceso">0,00</td>
+              </tr>
+              <tr>
+                <td>Base Imponible (70 % del exceso)</td>
+                <td id="retVolBase">0,00</td>
+                <td id="retLegBase">0,00</td>
+                <td id="retDifBase">0,00</td>
+              </tr>
+              <tr>
+                <td>IRPF aproximado</td>
+                <td id="retVolIrpf">0,00</td>
+                <td id="retLegIrpf">0,00</td>
+                <td id="retDifIrpf">0,00</td>
+              </tr>
+              <tr>
+                <td><strong>Indemnización Neta</strong></td>
+                <td id="retVolNeto">0,00</td>
+                <td id="retLegNeto">0,00</td>
+                <td id="retDifNeto">0,00</td>
+              </tr>
+              <!-- FILAS ADICIONALES PARA IRPF 15% (SIMULACIÓN) -->
+              <tr>
+                <td>IRPF 15 % (ejemplo)</td>
+                <td colspan="2"></td>
+                <td id="retDifIrpf15">0,00</td>
+              </tr>
+              <tr>
+                <td><strong>Neto tras 15 % IRPF (ejemplo)</strong></td>
+                <td colspan="2"></td>
+                <td id="retDifNeto15">0,00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- FIN nueva sección de Retenciones y Diferencias -->
       </div>
+      <!-- ============================= -->
+      <!-- FIN BLOQUE para Menores de 55 años -->
+      <!-- ============================= -->
 
       <!-- ============================= -->
       <!-- BLOQUE para Mayores de 55 años -->
@@ -252,69 +332,74 @@
       <div id="bloqueMayor55" style="display: none;">
         <h3>Mayor de 55 años – Prejubilación/Indemnización</h3>
 
-        <!-- A. Personas con 61 o más años (a 31/12/2025) y ≥ 10 años antigüedad -->
-        <div id="mayor61" style="display: none;" class="tabla-contenedor">
-          <h4>A)  61 o más años (a 31/12/2025) y antigüedad ≥ 10 años</h4>
-          <p>
-            → Pueden optar por indemnización de <strong>30 días/año</strong> de servicio, 
-            con <strong>límite máximo de 24 mensualidades</strong> de salario, prorrateándose por meses. 
-            Tope máximo de <strong>75 000 € brutos</strong> en total.
-          </p>
+        <!-- A) Edad ≥ 61 años -->
+        <div id="mayor61" class="tabla-contenedor" style="display: none;">
+          <h4>A) 61 o más años y antigüedad ≥ 10 años</h4>
           <table>
             <thead>
               <tr>
                 <th>Concepto</th>
+                <th>Detalle</th>
                 <th>Importe (€)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Indemnización Bruta Cálculo</td>
+                <td>Indemnización Bruta (30 días/año)</td>
+                <td>(Salario total / 365) × (30 × antigüedad)</td>
                 <td id="ind61Bruta">0,00</td>
               </tr>
               <tr>
                 <td>Tope 24 mensualidades</td>
+                <td>(Salario anual / 12) × 24</td>
                 <td id="tope24m">0,00</td>
               </tr>
               <tr>
                 <td>Tope 75 000 €</td>
+                <td>(valor fijo)</td>
                 <td id="tope75000">75 000,00</td>
               </tr>
               <tr>
-                <td><strong>Indemnización Bruta Aplicada</strong></td>
+                <td><strong>Bruta Aplicada</strong></td>
+                <td>Min(Bruta, Tope 24 m, 75 000 €)</td>
                 <td id="ind61Aplicada">0,00</td>
               </tr>
               <tr>
                 <td>Exento</td>
+                <td>Min(Bruta Aplicada, 180 000 €)</td>
                 <td id="exento61">0,00</td>
               </tr>
               <tr>
                 <td>Exceso sobre exento</td>
+                <td>Bruta Aplicada – Exento</td>
                 <td id="exceso61">0,00</td>
               </tr>
               <tr>
                 <td>Base Imponible (70 % del exceso)</td>
+                <td>0,70 × Exceso</td>
                 <td id="base61">0,00</td>
               </tr>
               <tr>
                 <td>IRPF aproximado</td>
+                <td>Tramos progresivos sobre Base Imponible</td>
                 <td id="irpf61">0,00</td>
               </tr>
               <tr>
                 <td><strong>Indemnización Neta</strong></td>
+                <td>Bruta Aplicada – IRPF</td>
                 <td id="neto61">0,00</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- B. Personas de 55 a 58 años (inclusive) a 31/12/2025 y ≥ 10 años antigüedad -->
-        <div id="mayor55_58" style="display: none;" class="tabla-contenedor">
-          <h4>B)  55 – 58 años (inclusive) a 31/12/2025 y antigüedad ≥ 10 años</h4>
-          <p>
-            → Renta temporal mensual equivalente al <strong>75 %</strong> del Salario Regulador Bruto de Referencia, 
-            desde la fecha de cese hasta cumplir 63 años, descontando la prestación por desempleo.
-          </p>
+        <!-- B) Edad 55–58 años -->
+        <div
+          id="mayor55_58"
+          class="tabla-contenedor"
+          style="display: none;"
+        >
+          <h4>B) 55 – 58 años (inclusive) a 31/12/2025 y antigüedad ≥ 10 años</h4>
           <table>
             <thead>
               <tr>
@@ -326,35 +411,36 @@
             <tbody>
               <tr>
                 <td>Salario Mensual de Referencia</td>
-                <td>(Salario fijo + Complementos)/12</td>
+                <td>(Salario total anual / 12)</td>
                 <td id="salarioMensualB">0,00</td>
               </tr>
               <tr>
                 <td>Porcentaje aplicado</td>
                 <td>75 %</td>
-                <td id="porcentajeB">75 %</td>
+                <td id="porcentajeB">0 %</td>
               </tr>
               <tr>
                 <td>Renta Mensual</td>
-                <td>75 % × Salario Mensual</td>
+                <td>0,75 × Salario Mensual</td>
                 <td id="rentaMensualB">0,00</td>
               </tr>
               <tr>
                 <td>Duración (meses hasta los 63 años)</td>
-                <td>(Fecha 63 años − Fecha de cese) / meses</td>
+                <td>(Fecha 63 años – Fecha de cese) / meses</td>
                 <td id="mesesB">0</td>
+              </tr>
+              <tr>
+                <td><strong>Renta Total (Temporal)</strong></td>
+                <td>Renta Mensual × Meses</td>
+                <td id="rentaTotalB">0,00</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- C. Personas de 59 a 60 años (inclusive) a 31/12/2025 y ≥ 10 años antigüedad -->
-        <div id="mayor59_60" style="display: none;" class="tabla-contenedor">
-          <h4>C)  59 – 60 años (inclusive) a 31/12/2025 y antigüedad ≥ 10 años</h4>
-          <p>
-            → Renta temporal mensual equivalente al <strong>80 %</strong> del Salario Regulador Bruto de Referencia, 
-            desde la fecha de cese hasta cumplir 63 años, descontando la prestación por desempleo.
-          </p>
+        <!-- C) Edad 59–60 años -->
+        <div id="mayor59_60" class="tabla-contenedor" style="display: none;">
+          <h4>C) 59 – 60 años (inclusive) a 31/12/2025 y antigüedad ≥ 10 años</h4>
           <table>
             <thead>
               <tr>
@@ -366,22 +452,22 @@
             <tbody>
               <tr>
                 <td>Salario Mensual de Referencia</td>
-                <td>(Salario fijo + Complementos)/12</td>
+                <td>(Salario total anual / 12)</td>
                 <td id="salarioMensualC">0,00</td>
               </tr>
               <tr>
                 <td>Porcentaje aplicado</td>
                 <td>80 %</td>
-                <td id="porcentajeC">80 %</td>
+                <td id="porcentajeC">0 %</td>
               </tr>
               <tr>
                 <td>Renta Mensual</td>
-                <td>80 % × Salario Mensual</td>
+                <td>0,80 × Salario Mensual</td>
                 <td id="rentaMensualC">0,00</td>
               </tr>
               <tr>
                 <td>Duración (meses hasta los 63 años)</td>
-                <td>(Fecha 63 años − Fecha de cese) / meses</td>
+                <td>(Fecha 63 años – Fecha de cese) / meses</td>
                 <td id="mesesC">0</td>
               </tr>
               <tr>
@@ -393,23 +479,27 @@
           </table>
         </div>
 
-        <!-- D. Personas menores de 55 años -->
-        <div id="menor55NoAplica" style="display: none;">
-          <p class="mensaje-error">
-            Esta sección es solo para mayores de 55 años. Si tienes menos de 55,
-            revisa la sección “Menor de 55 años” arriba.
-          </p>
-        </div>
+        <!-- D) Si no cumple condiciones mayor de 55 -->
+        <p id="menor55NoAplica" style="display: none; color: red;"></p>
       </div>
+      <!-- ============================= -->
+      <!-- FIN BLOQUE para Mayores de 55 años -->
+      <!-- ============================= -->
 
-      <!-- BOTÓN para descargar PDF -->
-      <div id="botonPDF" class="boton-container" style="display: none;">
-        <button id="descargarPdf">Descargar PDF</button>
+      <div class="campo-boton">
+        <button id="botonPDF" style="display: none;" class="btn-descargar">
+          Descargar PDF
+        </button>
       </div>
     </div>
+    <!-- ============================= -->
+    <!-- FIN RESULTADO DEL CÁLCULO -->
+    <!-- ============================= -->
   </div>
 
-  <!-- Vinculamos el script JavaScript -->
+  <!-- ============================= -->
+  <!-- ENLACE A TU JS -->
+  <!-- ============================= -->
   <script src="script.js"></script>
 </body>
 </html>
