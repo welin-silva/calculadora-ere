@@ -98,6 +98,7 @@ function desglosarIndemnizacion(bruta) {
   return { bruta, exento, exceso, baseImponible, irpf, neto };
 }
 
+
 // -----------------------------------------------------------
 // 2) Referencias al DOM
 // -----------------------------------------------------------
@@ -198,6 +199,7 @@ const retencionesContainer = document.getElementById('retencionesContainer');
 
 // Objeto en memoria para volcar datos exactos al PDF
 let datosParaPDF = {};
+
 
 // -----------------------------------------------------------
 // 3) Manejador de “submit” del formulario
@@ -396,7 +398,7 @@ form.addEventListener('submit', (event) => {
       volBrutaVal = desgVolSin.bruta;
     }
 
-    // 2) Para “LEGAL” usamos el objeto desgTotal (100% exento)
+    // 2) Para “LEGAL” usamos el objeto desgTotal (100% exenta)
     const desgLeg = { 
       bruta: desgTotal.bruta,
       exento: desgTotal.exento,
@@ -424,8 +426,8 @@ form.addEventListener('submit', (event) => {
     retLegIrpfEl.textContent   = '0.00';
     retLegNetoEl.textContent   = desgLeg.neto.toFixed(2);
 
-    // 4) CALCULAMOS “DIFERENCIA BRUTA” = (legBruta – volBruta). Si negativa, la ajustamos a 0.
-    let difBruta = legBrutaVal - volBrutaVal;
+    // 4) CALCULAMOS “DIFERENCIA BRUTA” = VOLUNTARIA – LEGAL. Si negativa, la ajustamos a 0.
+    let difBruta = volBrutaVal - legBrutaVal;
     if (difBruta < 0) difBruta = 0;
 
     // 5) DESGLOSE DE ESA DIFERENCIA con desglosarIndemnizacion(...)
@@ -439,7 +441,7 @@ form.addEventListener('submit', (event) => {
     retDifIrpfEl.textContent   = desgDif.irpf.toFixed(2);
     retDifNetoEl.textContent   = desgDif.neto.toFixed(2);
 
-    // 7) SIMULACIÓN IRPF 15 % (aplicado sobre la diferencia bruta)
+    // 7) SIMULACIÓN IRPF 15 % (aplicado sobre la Diferencia Bruta):
     const irpf15 = parseFloat((difBruta * 0.15).toFixed(2));
     const neto15 = parseFloat((difBruta - irpf15).toFixed(2));
     retDifIrpf15El.textContent = irpf15.toFixed(2);
@@ -725,7 +727,7 @@ botonPDF.addEventListener('click', () => {
       doc.text(vSin.neto.toFixed(2) + ' €', xValue, y); y += 8;
     }
 
-    // LEGAL unificado (100% exento)
+    // LEGAL unificado (100% exenta)
     doc.text('2) Indemnización LEGAL (improcedente)', xLabel, y);
     y += 6;
     doc.text('- Antes 12/02/2012 (45 días/año):', xLabel, y);
@@ -794,7 +796,7 @@ botonPDF.addEventListener('click', () => {
     doc.text('- Legal Neta:', xLabel, y);
     doc.text(datosParaPDF.legNeto.toFixed(2) + ' €', xValue, y); y += 8;
 
-    // Diferencia
+    // Diferencia (Voluntaria – Legal)
     {
       const difExento = parseFloat(retDifExentoEl.textContent);
       const difExceso = parseFloat(retDifExcesoEl.textContent);
