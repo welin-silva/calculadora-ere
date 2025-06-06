@@ -1,0 +1,182 @@
+/* Reset muy básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
+  color: #333;
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.titulo-principal {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  font-weight: 600;
+  color: #2C3E50;
+}
+
+/* FORMULARIO */
+.form-calculo {
+  background: #F9F9F9;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 40px;
+}
+
+.campo-form {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.campo-form label {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #34495E;
+}
+
+.campo-form input[type="text"],
+.campo-form input[type="number"] {
+  padding: 10px;
+  border: 1px solid #CCC;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease-in-out;
+}
+
+.campo-form input[type="text"]:focus,
+.campo-form input[type="number"]:focus {
+  outline: none;
+  border-color: #2980B9;
+}
+
+.nota {
+  font-size: 0.85rem;
+  color: #7F8C8D;
+  margin-top: 4px;
+}
+
+.boton-container {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.boton-container button {
+  background-color: #2980B9;
+  color: #FFF;
+  border: none;
+  padding: 12px 30px;
+  font-size: 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.boton-container button:hover {
+  background-color: #1F618D;
+}
+
+/* RESULTADOS */
+.resultado {
+  margin-top: 30px;
+}
+
+.resultado h2 {
+  font-size: 1.8rem;
+  color: #2C3E50;
+  margin-bottom: 15px;
+}
+
+.resultado p {
+  font-size: 1rem;
+  margin-bottom: 8px;
+  color: #2C3E50;
+}
+
+/* Tablas de resultados */
+.tabla-contenedor {
+  margin-top: 30px;
+}
+
+.tabla-contenedor h4 {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  color: #34495E;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 25px;
+}
+
+thead {
+  background-color: #2980B9;
+  color: #FFF;
+}
+
+th,
+td {
+  border: 1px solid #D5D8DC;
+  padding: 10px;
+  text-align: left;
+}
+
+tr:nth-of-type(even) {
+  background-color: #F2F3F4;
+}
+
+tr:hover {
+  background-color: #E8F6F3;
+}
+
+th {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.mensaje-error {
+  color: #C0392B;
+  font-weight: bold;
+}
+
+/* Adaptación pantallas pequeñas */
+@media (max-width: 600px) {
+  .container {
+    padding: 0 10px;
+  }
+
+  .titulo-principal {
+    font-size: 2rem;
+  }
+
+  .tabla-contenedor h4 {
+    font-size: 1rem;
+  }
+
+  th,
+  td {
+    font-size: 0.9rem;
+  }
+
+  .campo-form input[type="text"],
+  .campo-form input[type="number"] {
+    font-size: 0.9rem;
+  }
+
+  .boton-container button {
+    font-size: 0.9rem;
+    padding: 10px 20px;
+  }
+}
