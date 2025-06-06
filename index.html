@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Calcula tu Indemnización o Prejubilación</title>
-  <!-- Vincula tu CSS existente (style.css) -->
+  <!-- Tu CSS (style.css) -->
   <link rel="stylesheet" href="style.css" />
   <!-- jsPDF desde CDN para generar PDF en el cliente -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -196,7 +196,7 @@
           </table>
         </div>
 
-        <!-- 2) LEGAL → bloque único unificado con tramos 45/33 días -->
+        <!-- 2) LEGAL → bloque único unificado con 45/33 días -->
         <div id="legalContainer" class="tabla-contenedor" style="display: none;">
           <h4>2) Indemnización LEGAL (45 / 33 días según antigüedad)</h4>
           <table>
@@ -243,7 +243,7 @@
           </table>
         </div>
 
-        <!-- 3) NUEVA SECCIÓN: Retenciones y Diferencias -->
+        <!-- 3) RETENCIONES y DIFERENCIAS entre Voluntaria y Legal -->
         <div
           id="retencionesContainer"
           class="tabla-contenedor"
@@ -254,11 +254,10 @@
             • La indemnización <strong>LEGAL improcedente</strong> se considera 100 % exenta:  
             <em>(no se practican retenciones de IRPF sobre la parte legal).</em><br/>
             • Si la indemnización <strong>legal</strong> supera a la <strong>voluntaria</strong>, 
-            solo se tributa por el exceso que quede por encima de 180 000 €; 
-            ese exceso aparece desglosado en la columna “Diferencia” y sí lleva IRPF.<br/>
-            • Ejemplo de retención al 15 %: 
-            en la columna “Diferencia (IRPF 15 %)” mostramos cuánto sería si se aplicara un IRPF fijo del 15 % 
-            sobre la diferencia bruta (para comparar).
+            solo se tributa por el exceso que quede por encima de 180 000 €; ese exceso aparece desglosado 
+            en la columna “Diferencia” y sí lleva IRPF.<br/>
+            • El IRPF que aparece en “Diferencia (por tramos)” corresponde al tipo marginal máximo según 
+            Hacienda (2024/2025). La retención real varía según tu situación familiar (hijos, estado civil, etc.).
           </p>
           <table>
             <thead>
@@ -306,21 +305,50 @@
                 <td id="retLegNeto">0,00</td>
                 <td id="retDifNeto">0,00</td>
               </tr>
-              <!-- FILAS ADICIONALES PARA IRPF 15% (SIMULACIÓN) -->
+              <!-- FILAS PARA IRPF POR TRAMOS EN “Diferencia” -->
               <tr>
-                <td>IRPF 15 % (ejemplo)</td>
-                <td colspan="2"></td>
-                <td id="retDifIrpf15">0,00</td>
+                <td>IRPF (por tramos)</td>
+                <td></td>
+                <td></td>
+                <td id="retDifIrpfTramos">0,00</td>
               </tr>
               <tr>
-                <td><strong>Neto tras 15 % IRPF (ejemplo)</strong></td>
-                <td colspan="2"></td>
-                <td id="retDifNeto15">0,00</td>
+                <td><strong>Neto tras IRPF (por tramos)</strong></td>
+                <td></td>
+                <td></td>
+                <td id="retDifNetoTramos">0,00</td>
               </tr>
+              <!-- === FILAS NUEVAS: Totales en cada columna === -->
+              <tr>
+                <td><strong>Total sin retención</strong></td>
+                <td id="retTotalSinVol">0,00</td>
+                <td id="retTotalSinLeg">0,00</td>
+                <td id="retTotalSinDif">0,00</td>
+              </tr>
+              <tr>
+                <td><strong>Total tras IRPF</strong></td>
+                <td id="retTotalConVol">0,00</td>
+                <td id="retTotalConLeg">0,00</td>
+                <td id="retTotalConDif">0,00</td>
+              </tr>
+              <!-- === FIN FILAS NUEVAS === -->
             </tbody>
           </table>
+
+          <!-- ==== BLOQUE ADICIONAL: Totales globales combinados ==== -->
+          <div class="totales-globales">
+            <p>
+              <strong>Total global sin retención (Legal + Diferencia):</strong>
+              <span id="totalGlobalSin">0,00</span> €
+            </p>
+            <p>
+              <strong>Total global tras IRPF ( Legal + Diferencia ):</strong>
+              <span id="totalGlobalCon">0,00</span> €
+            </p>
+          </div>
+          <!-- ==== FIN BLOQUE ADICIONAL ==== -->
         </div>
-        <!-- FIN nueva sección de Retenciones y Diferencias -->
+        <!-- FIN sección Retenciones y Diferencias -->
       </div>
       <!-- ============================= -->
       <!-- FIN BLOQUE para Menores de 55 años -->
@@ -417,7 +445,7 @@
               <tr>
                 <td>Porcentaje aplicado</td>
                 <td>75 %</td>
-                <td id="porcentajeB">0 %</td>
+                <td id="porcentajeB">0,00</td>
               </tr>
               <tr>
                 <td>Renta Mensual</td>
@@ -458,7 +486,7 @@
               <tr>
                 <td>Porcentaje aplicado</td>
                 <td>80 %</td>
-                <td id="porcentajeC">0 %</td>
+                <td id="porcentajeC">0,00</td>
               </tr>
               <tr>
                 <td>Renta Mensual</td>
@@ -498,7 +526,7 @@
   </div>
 
   <!-- ============================= -->
-  <!-- ENLACE A TU JS -->
+  <!-- ENLACE A script.js -->
   <!-- ============================= -->
   <script src="script.js"></script>
 </body>

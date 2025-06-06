@@ -7,9 +7,9 @@
 function parseFecha(str) {
   const partes = str.split('/');
   if (partes.length !== 3) return null;
-  const day = parseInt(partes[0], 10);
-  const month = parseInt(partes[1], 10) - 1; // mesIndex de 0 a 11
-  const year = parseInt(partes[2], 10);
+  const day   = parseInt(partes[0], 10);
+  const month = parseInt(partes[1], 10) - 1; // mesIndex 0–11
+  const year  = parseInt(partes[2], 10);
   const date = new Date(year, month, day);
   // Verificar que la fecha generada coincide exactamente
   if (
@@ -36,7 +36,7 @@ function calcularEdad(fechaNac, fechaRef) {
 // Calcula la antigüedad en años (decimales) entre fechaAlta y fechaRef.
 function calcularAntiguedad(fechaAlta, fechaRef) {
   const diffMs = fechaRef - fechaAlta; // diferencia en milisegundos
-  const dias = diffMs / (1000 * 60 * 60 * 24);
+  const dias   = diffMs / (1000 * 60 * 60 * 24);
   return dias / 365.25;
 }
 
@@ -44,32 +44,40 @@ function calcularAntiguedad(fechaAlta, fechaRef) {
 // Si fecha2 < fecha1, devuelve 0.
 function calcularMesesEntre(fecha1, fecha2) {
   if (fecha2 <= fecha1) return 0;
-  const year1 = fecha1.getFullYear();
+  const year1  = fecha1.getFullYear();
   const month1 = fecha1.getMonth();
-  const day1 = fecha1.getDate();
+  const day1   = fecha1.getDate();
 
-  const year2 = fecha2.getFullYear();
+  const year2  = fecha2.getFullYear();
   const month2 = fecha2.getMonth();
-  const day2 = fecha2.getDate();
+  const day2   = fecha2.getDate();
 
   let meses = (year2 - year1) * 12 + (month2 - month1);
-  // Si el día2 es menor que el día1, restamos 1 mes 
-  if (day2 < day1) {
-    meses--;
-  }
+  // Si día2 < día1, restamos un mes
+  if (day2 < day1) meses--;
   return Math.max(meses, 0);
 }
 
-// Calcula IRPF aproximado para una baseImponible usando tramos progresivos.
+// -----------------------------------------------------------
+// 2) Cálculo de IRPF “por tramos” (valores oficiales 2024/2025)
+// -----------------------------------------------------------
+// Tramos IRPF (suma estatal + autonómico aproximado):
+//   0 –   12 450 €     → 19 %
+//   12 450 – 20 200 € → 24 %
+//   20 200 – 35 200 € → 30 %
+//   35 200 – 60 000 € → 37 %
+//   60 000 – 300 000 €→ 45 %
+//   > 300 000 €       → 47 %
 function calcularIrpf(base) {
   let impuesto = 0;
   let restante = base;
   const tramos = [
-    { limInf:   0, limSup:  12450, tasa: 0.19 },
-    { limInf: 12450, limSup:  20200, tasa: 0.24 },
-    { limInf: 20200, limSup:  35200, tasa: 0.30 },
-    { limInf: 35200, limSup:  60000, tasa: 0.37 },
-    { limInf: 60000, limSup: Infinity, tasa: 0.45 },
+    { limInf:     0, limSup: 12450, tasa: 0.19 },
+    { limInf: 12450, limSup: 20200, tasa: 0.24 },
+    { limInf: 20200, limSup: 35200, tasa: 0.30 },
+    { limInf: 35200, limSup: 60000, tasa: 0.37 },
+    { limInf: 60000, limSup:300000, tasa: 0.45 },
+    { limInf:300000, limSup:   Infinity, tasa: 0.47 },
   ];
 
   for (const tramo of tramos) {
@@ -80,27 +88,46 @@ function calcularIrpf(base) {
       restante -= ancho;
     } else {
       impuesto += restante * tramo.tasa;
+      restante = 0;
       break;
     }
   }
   return impuesto;
 }
 
-// Dado un importe bruto de indemnización, devuelve un objeto:
-// { bruta, exento, exceso, baseImponible, irpf, neto }.
+// -----------------------------------------------------------
+// 3) Desglose de indemnización hasta 180 000 € exentos
+// -----------------------------------------------------------
+// - Si bruta ≤ 180 000 € → exento = bruta, exceso = 0 → no IRPF
+// - Si bruta > 180 000 € →
+//     exento = 180 000 €,
+//     exceso = bruta − 180 000 €,
+//     baseImponible = exceso,
+//     irpf = calcularIrpf(exceso),
+//     neto = bruta − irpf
 function desglosarIndemnizacion(bruta) {
   const LIMITE_EXENTO = 180000;
-  const exento = Math.min(bruta, LIMITE_EXENTO);
-  const exceso = bruta > LIMITE_EXENTO ? bruta - LIMITE_EXENTO : 0;
-  const baseImponible = exceso * 0.7; // solo se integra el 70% del exceso
-  const irpf = calcularIrpf(baseImponible);
-  const neto = bruta - irpf;
+  let exento, exceso, baseImponible, irpf, neto;
+
+  if (bruta <= LIMITE_EXENTO) {
+    exento        = bruta;
+    exceso        = 0;
+    baseImponible = 0;
+    irpf          = 0;
+    neto          = bruta;
+  } else {
+    exento        = LIMITE_EXENTO;
+    exceso        = bruta - LIMITE_EXENTO;
+    baseImponible = exceso;
+    irpf          = calcularIrpf(exceso);
+    neto          = bruta - irpf;
+  }
+
   return { bruta, exento, exceso, baseImponible, irpf, neto };
 }
 
-
 // -----------------------------------------------------------
-// 2) Referencias al DOM
+// 4) Referencias al DOM
 // -----------------------------------------------------------
 const form                = document.getElementById('form-calculo');
 const resultadoDiv        = document.getElementById('resultado');
@@ -165,56 +192,62 @@ const mesesCEl            = document.getElementById('mesesC');
 const rentaTotalCEl       = document.getElementById('rentaTotalC');
 
 const menor55NoAplicaEl   = document.getElementById('menor55NoAplica');
-
 const botonPDF            = document.getElementById('botonPDF');
 
-// ------------------------------------
-// Referencias “Retenciones y Diferencias”
-// ------------------------------------
-const retVolBrutaEl   = document.getElementById('retVolBruta');
-const retVolExentoEl  = document.getElementById('retVolExento');
-const retVolExcesoEl  = document.getElementById('retVolExceso');
-const retVolBaseEl    = document.getElementById('retVolBase');
-const retVolIrpfEl    = document.getElementById('retVolIrpf');
-const retVolNetoEl    = document.getElementById('retVolNeto');
+const retVolBrutaEl       = document.getElementById('retVolBruta');
+const retVolExentoEl      = document.getElementById('retVolExento');
+const retVolExcesoEl      = document.getElementById('retVolExceso');
+const retVolBaseEl        = document.getElementById('retVolBase');
+const retVolIrpfEl        = document.getElementById('retVolIrpf');
+const retVolNetoEl        = document.getElementById('retVolNeto');
 
-const retLegBrutaEl   = document.getElementById('retLegBruta');
-const retLegExentoEl  = document.getElementById('retLegExento');
-const retLegExcesoEl  = document.getElementById('retLegExceso');
-const retLegBaseEl    = document.getElementById('retLegBase');
-const retLegIrpfEl    = document.getElementById('retLegIrpf');
-const retLegNetoEl    = document.getElementById('retLegNeto');
+const retLegBrutaEl       = document.getElementById('retLegBruta');
+const retLegExentoEl      = document.getElementById('retLegExento');
+const retLegExcesoEl      = document.getElementById('retLegExceso');
+const retLegBaseEl        = document.getElementById('retLegBase');
+const retLegIrpfEl        = document.getElementById('retLegIrpf');
+const retLegNetoEl        = document.getElementById('retLegNeto');
 
-const retDifBrutaEl   = document.getElementById('retDifBruta');
-const retDifExentoEl  = document.getElementById('retDifExento');
-const retDifExcesoEl  = document.getElementById('retDifExceso');
-const retDifBaseEl    = document.getElementById('retDifBase');
-const retDifIrpfEl    = document.getElementById('retDifIrpf');
-const retDifNetoEl    = document.getElementById('retDifNeto');
+const retDifBrutaEl       = document.getElementById('retDifBruta');
+const retDifExentoEl      = document.getElementById('retDifExento');
+const retDifExcesoEl      = document.getElementById('retDifExceso');
+const retDifBaseEl        = document.getElementById('retDifBase');
+const retDifIrpfEl        = document.getElementById('retDifIrpf');
+const retDifNetoEl        = document.getElementById('retDifNeto');
 
-const retDifIrpf15El  = document.getElementById('retDifIrpf15');
-const retDifNeto15El  = document.getElementById('retDifNeto15');
+const retDifIrpfTramosEl  = document.getElementById('retDifIrpfTramos');
+const retDifNetoTramosEl  = document.getElementById('retDifNetoTramos');
+
+const retTotalSinVolEl    = document.getElementById('retTotalSinVol');
+const retTotalSinLegEl    = document.getElementById('retTotalSinLeg');
+const retTotalSinDifEl    = document.getElementById('retTotalSinDif');
+
+const retTotalConVolEl    = document.getElementById('retTotalConVol');
+const retTotalConLegEl    = document.getElementById('retTotalConLeg');
+const retTotalConDifEl    = document.getElementById('retTotalConDif');
+
+const totalGlobalSinEl    = document.getElementById('totalGlobalSin');
+const totalGlobalConEl    = document.getElementById('totalGlobalCon');
 
 const retencionesContainer = document.getElementById('retencionesContainer');
 
 // Objeto en memoria para volcar datos exactos al PDF
 let datosParaPDF = {};
 
-
 // -----------------------------------------------------------
-// 3) Manejador de “submit” del formulario
+// 5) Manejador de “submit” del formulario
 // -----------------------------------------------------------
 form.addEventListener('submit', (event) => {
   event.preventDefault();
 
-  // 3.1) Leer valores del formulario
+  // 5.1) Leer valores del formulario
   const fechaNacimientoStr = document.getElementById('fechaNacimiento').value.trim();
   const fechaAltaStr       = document.getElementById('fechaAlta').value.trim();
   const fechaCeseStr       = document.getElementById('fechaCese').value.trim();
   const salarioFijo        = parseFloat(document.getElementById('salarioFijo').value);
   const complementos       = parseFloat(document.getElementById('complementos').value);
 
-  // 3.2) Parsear fechas a Date
+  // 5.2) Parsear fechas a Date
   const fechaNacimiento = parseFecha(fechaNacimientoStr);
   const fechaAlta       = parseFecha(fechaAltaStr);
   const fechaCese       = parseFecha(fechaCeseStr);
@@ -228,7 +261,7 @@ form.addEventListener('submit', (event) => {
     return;
   }
 
-  // 3.3) Calcular edad y antigüedad
+  // 5.3) Calcular edad y antigüedad
   const edad  = calcularEdad(fechaNacimiento, fechaCese);
   const antig = calcularAntiguedad(fechaAlta, fechaCese);
 
@@ -241,11 +274,11 @@ form.addEventListener('submit', (event) => {
   datosParaPDF.edad               = edad;
   datosParaPDF.antiguedad         = antig;
 
-  // 3.4) Pintar en pantalla edad / antigüedad
+  // 5.4) Pintar en pantalla edad / antigüedad
   txtEdad.textContent       = edad.toString();
   txtAntiguedad.textContent = antig.toFixed(2);
 
-  // 3.5) Calcular salario con/sin complementos y pintar
+  // 5.5) Calcular salario con/sin complementos y pintar
   const salarioCon = salarioFijo + complementos;
   const salarioSin = salarioFijo;
   txtSalarioCon.textContent = salarioCon.toFixed(2);
@@ -253,10 +286,10 @@ form.addEventListener('submit', (event) => {
   datosParaPDF.salarioCon = salarioCon;
   datosParaPDF.salarioSin = salarioSin;
 
-  // 3.6) Mostrar contenedor de resultados
+  // 5.6) Mostrar contenedor de resultados
   resultadoDiv.style.display = 'block';
 
-  // 3.7) Lógica según edad
+  // 5.7) Lógica según edad
   if (edad < 55) {
     //---------------------------------------------------
     //  === MENOR DE 55: VOLUNTARIA + LEGAL UNIFICADO ===
@@ -264,7 +297,7 @@ form.addEventListener('submit', (event) => {
     bloqueMenor55.style.display = 'block';
     bloqueMayor55.style.display = 'none';
 
-    // -- Voluntaria 50 días --
+    // --- Indemnización VOLUNTARIA a 50 días ---
     const brutoVolCon = (salarioCon / 365) * (50 * antig);
     const desgVolCon  = desglosarIndemnizacion(brutoVolCon);
 
@@ -299,14 +332,13 @@ form.addEventListener('submit', (event) => {
       datosParaPDF.desgVolSin = desgVolSin;
     }
 
-    // -- LEGAL (unificado) --
-    const fechaReforma = new Date(2012, 1, 12); // 12 feb 2012
-
-    let antiguedadAntes   = 0;
-    let antiguedadDespues = 0;
+    // --- Indemnización LEGAL (unificado: 45 días/año antes 12-feb-2012 + 33 días/año después) ---
+    const fechaReforma       = new Date(2012, 1, 12); // 12 feb 2012
+    let antiguedadAntes      = 0;
+    let antiguedadDespues    = 0;
 
     if (fechaAlta < fechaReforma) {
-      const finTramo = fechaCese < fechaReforma ? fechaCese : fechaReforma;
+      const finTramo = (fechaCese < fechaReforma ? fechaCese : fechaReforma);
       antiguedadAntes = calcularAntiguedad(fechaAlta, finTramo);
       if (fechaCese > fechaReforma) {
         antiguedadDespues = calcularAntiguedad(fechaReforma, fechaCese);
@@ -316,35 +348,33 @@ form.addEventListener('submit', (event) => {
       antiguedadDespues = calcularAntiguedad(fechaAlta, fechaCese);
     }
 
-    // Importes brutos de cada tramo
+    // Importes brutos de cada tramo (con o sin complementos)
     let brutoAntesCon   = (salarioCon / 365) * (45 * antiguedadAntes);
     let brutoDespuesCon = (salarioCon / 365) * (33 * antiguedadDespues);
-
     let brutoAntesSin   = (salarioSin / 365) * (45 * antiguedadAntes);
     let brutoDespuesSin = (salarioSin / 365) * (33 * antiguedadDespues);
 
     let totalBruta, desgTotal;
     if (complementos > 0) {
       totalBruta = brutoAntesCon + brutoDespuesCon;
-      // NOTA: la indemnización LEGAL se considera 100% exenta, así que
-      // pintaremos la parte legal como exenta íntegra sin retención.
+      // La parte legal es 100 % exenta → sin retención
       desgTotal = {
-        bruta: totalBruta,
-        exento: totalBruta,
-        exceso: 0,
+        bruta:         totalBruta,
+        exento:        totalBruta,
+        exceso:        0,
         baseImponible: 0,
-        irpf: 0,
-        neto: totalBruta
+        irpf:          0,
+        neto:          totalBruta
       };
     } else {
       totalBruta = brutoAntesSin + brutoDespuesSin;
       desgTotal = {
-        bruta: totalBruta,
-        exento: totalBruta,
-        exceso: 0,
+        bruta:         totalBruta,
+        exento:        totalBruta,
+        exceso:        0,
         baseImponible: 0,
-        irpf: 0,
-        neto: totalBruta
+        irpf:          0,
+        neto:          totalBruta
       };
     }
 
@@ -386,26 +416,24 @@ form.addEventListener('submit', (event) => {
     // ===========================================
 
     // 1) HACEMOS DESGLOSE DE “VOLUNTARIA”:
-    //    - Si complementos>0, usamos desgVolCon, sino desgVolSin.
-    let desgVol;     
-    let volBrutaVal;
-
+    //    - Si complementos>0, usamos desgVolCon; sino, desgVolSin.
+    let desgVol, volBrutaVal;
     if (complementos > 0) {
-      desgVol = desgVolCon;
+      desgVol      = desgVolCon;
       volBrutaVal = desgVolCon.bruta;
     } else {
-      desgVol = desgVolSin;
+      desgVol      = desgVolSin;
       volBrutaVal = desgVolSin.bruta;
     }
 
-    // 2) Para “LEGAL” usamos el objeto desgTotal (100% exenta)
-    const desgLeg = { 
-      bruta: desgTotal.bruta,
-      exento: desgTotal.exento,
-      exceso: 0,
+    // 2) PARA “LEGAL” usamos el objeto desgTotal (100 % exenta)
+    const desgLeg   = {
+      bruta:         desgTotal.bruta,
+      exento:        desgTotal.exento,
+      exceso:        0,
       baseImponible: 0,
-      irpf: 0,
-      neto: desgTotal.neto
+      irpf:          0,
+      neto:          desgTotal.neto
     };
     const legBrutaVal = desgTotal.bruta;
 
@@ -418,15 +446,15 @@ form.addEventListener('submit', (event) => {
     retVolIrpfEl.textContent   = desgVol.irpf.toFixed(2);
     retVolNetoEl.textContent   = desgVol.neto.toFixed(2);
 
-    // Legal (100% exenta):
+    // Legal (100 % exenta)
     retLegBrutaEl.textContent  = desgLeg.bruta.toFixed(2);
     retLegExentoEl.textContent = desgLeg.exento.toFixed(2);
-    retLegExcesoEl.textContent = '0.00';
-    retLegBaseEl.textContent   = '0.00';
-    retLegIrpfEl.textContent   = '0.00';
+    retLegExcesoEl.textContent = '0,00';
+    retLegBaseEl.textContent   = '0,00';
+    retLegIrpfEl.textContent   = '0,00';
     retLegNetoEl.textContent   = desgLeg.neto.toFixed(2);
 
-    // 4) CALCULAMOS “DIFERENCIA BRUTA” = VOLUNTARIA – LEGAL. Si negativa, la ajustamos a 0.
+    // 4) CALCULAMOS “DIFERENCIA BRUTA” = Voluntaria – Legal. Si negativa, la ajustamos a 0.
     let difBruta = volBrutaVal - legBrutaVal;
     if (difBruta < 0) difBruta = 0;
 
@@ -441,26 +469,64 @@ form.addEventListener('submit', (event) => {
     retDifIrpfEl.textContent   = desgDif.irpf.toFixed(2);
     retDifNetoEl.textContent   = desgDif.neto.toFixed(2);
 
-    // 7) SIMULACIÓN IRPF 15 % (aplicado sobre la Diferencia Bruta):
-    const irpf15 = parseFloat((difBruta * 0.15).toFixed(2));
-    const neto15 = parseFloat((difBruta - irpf15).toFixed(2));
-    retDifIrpf15El.textContent = irpf15.toFixed(2);
-    retDifNeto15El.textContent = neto15.toFixed(2);
+    // 7) IRPF según tramos de Hacienda (si se tributase íntegramente la DIFERENCIA)
+    //    – Este IRPF simula el tipo marginal máximo: calcularIrpf(difBruta).
+    const irpfTramos = parseFloat(calcularIrpf(difBruta).toFixed(2));
+    const netoTramos = parseFloat((difBruta - irpfTramos).toFixed(2));
+    retDifIrpfTramosEl.textContent = irpfTramos.toFixed(2);
+    retDifNetoTramosEl.textContent = netoTramos.toFixed(2);
 
-    // 8) MOSTRAMOS el contenedor “Retenciones y Diferencias”
+    // 8) FILAS NUEVAS: Totales en cada columna
+    //    – “Total sin retención”  → Voluntaria.bruta,  Legal.bruta,  Diferencia.bruta
+    //    – “Total tras IRPF”      → Voluntaria.neto,   Legal.neto,   Diferencia.netoTramos
+    const totalSinVol  = desgVol.bruta;
+    const totalConVol  = desgVol.neto;
+
+    const totalSinLeg  = desgLeg.bruta;  // (Legal es 100 % exenta)
+    const totalConLeg  = desgLeg.neto;   // (Legal.neto === Legal.bruta)
+
+    const totalSinDif  = difBruta;
+    const totalConDif  = netoTramos;
+
+    retTotalSinVolEl.textContent = totalSinVol.toFixed(2);
+    retTotalConVolEl.textContent = totalConVol.toFixed(2);
+
+    retTotalSinLegEl.textContent = totalSinLeg.toFixed(2);
+    retTotalConLegEl.textContent = totalConLeg.toFixed(2);
+
+    retTotalSinDifEl.textContent = totalSinDif.toFixed(2);
+    retTotalConDifEl.textContent = totalConDif.toFixed(2);
+
+    // 9) Totales globales combinados (Legal + Diferencia)
+    const totalGlobalSin = totalSinLeg + totalSinDif;   // p. ej. 49 266,69 + 24 239,18 = 73 505,87
+    const totalGlobalCon = totalConLeg + totalConDif;   // p. ej. 49 266,69 + 18 801,93 = 68 068,62
+    totalGlobalSinEl.textContent = totalGlobalSin.toFixed(2);
+    totalGlobalConEl.textContent = totalGlobalCon.toFixed(2);
+
+    // 10) MOSTRAMOS el contenedor “Retenciones y Diferencias”
     retencionesContainer.style.display = 'block';
 
     // Guardar datos para PDF
-    datosParaPDF.retVol = desgVol;
-    datosParaPDF.retLeg = desgLeg;
-    datosParaPDF.retDif = desgDif;
-    datosParaPDF.retDifIrpf15 = irpf15;
-    datosParaPDF.retDifNeto15 = neto15;
+    datosParaPDF.retVol           = desgVol;
+    datosParaPDF.retLeg           = desgLeg;
+    datosParaPDF.retDif           = desgDif;
+    datosParaPDF.retDifIrpfTramos = irpfTramos;
+    datosParaPDF.retDifNetoTramos = netoTramos;
+
+    datosParaPDF.retTotalSinVol   = totalSinVol;
+    datosParaPDF.retTotalConVol   = totalConVol;
+    datosParaPDF.retTotalSinLeg   = totalSinLeg;
+    datosParaPDF.retTotalConLeg   = totalConLeg;
+    datosParaPDF.retTotalSinDif   = totalSinDif;
+    datosParaPDF.retTotalConDif   = totalConDif;
+
+    datosParaPDF.totalGlobalSin   = totalGlobalSin;
+    datosParaPDF.totalGlobalCon   = totalGlobalCon;
 
     return; // terminamos el caso “Menor de 55”
   } else {
     //--------------------------------------------
-    //  === MAYORES DE 55: A/B/C ===
+    //  === MAYORES DE 55: A, B, C ===
     //--------------------------------------------
     bloqueMenor55.style.display = 'none';
     bloqueMayor55.style.display = 'block';
@@ -490,7 +556,7 @@ form.addEventListener('submit', (event) => {
       // Pintar en DOM
       ind61BrutaEl.textContent    = libreBruta.toFixed(2);
       tope24mEl.textContent       = tope24m.toFixed(2);
-      tope75000El.textContent     = '75 000.00';
+      tope75000El.textContent     = '75 000,00';
       ind61AplicadaEl.textContent = brutoAplicada.toFixed(2);
       exento61El.textContent      = desg.exento.toFixed(2);
       exceso61El.textContent      = desg.exceso.toFixed(2);
@@ -502,7 +568,7 @@ form.addEventListener('submit', (event) => {
       datosParaPDF.ind61LibreBruta    = libreBruta;
       datosParaPDF.ind61Tope24m       = tope24m;
       datosParaPDF.ind61BrutaAplicada = brutoAplicada;
-      datosParaPDF.desg61 = desg;
+      datosParaPDF.desg61             = desg;
 
       mayor55_58Container.style.display = 'none';
       mayor59_60Container.style.display = 'none';
@@ -523,9 +589,10 @@ form.addEventListener('submit', (event) => {
     if (!cumple10) {
       mayor55_58Container.style.display = 'none';
       mayor59_60Container.style.display = 'none';
-      menor55NoAplicaEl.textContent = 'Para acogerte como mayor de 55 necesitas al menos 10 años de antigüedad.';
-      menor55NoAplicaEl.style.display = 'block';
-      botonPDF.style.display = 'none';
+      menor55NoAplicaEl.textContent      =
+        'Para acogerte como mayor de 55 necesitas al menos 10 años de antigüedad.';
+      menor55NoAplicaEl.style.display    = 'block';
+      botonPDF.style.display             = 'none';
       return;
     }
 
@@ -551,11 +618,11 @@ form.addEventListener('submit', (event) => {
       rentaTotalBEl.textContent     = rentaTotal.toFixed(2);
 
       // Guardar para PDF
-      datosParaPDF.salarioMensualB   = salarioMensual;
-      datosParaPDF.porcentajeB       = porcentaje;
-      datosParaPDF.rentaMensualB     = rentaMensual;
-      datosParaPDF.mesesHasta63_B    = mesesHasta63;
-      datosParaPDF.rentaTotalB       = rentaTotal;
+      datosParaPDF.salarioMensualB = salarioMensual;
+      datosParaPDF.porcentajeB     = porcentaje;
+      datosParaPDF.rentaMensualB   = rentaMensual;
+      datosParaPDF.mesesHasta63_B  = mesesHasta63;
+      datosParaPDF.rentaTotalB     = rentaTotal;
 
       mayor59_60Container.style.display = 'none';
       menor55NoAplicaEl.style.display   = 'none';
@@ -586,11 +653,11 @@ form.addEventListener('submit', (event) => {
       rentaTotalCEl.textContent     = rentaTotal.toFixed(2);
 
       // Guardar para PDF
-      datosParaPDF.salarioMensualC   = salarioMensual;
-      datosParaPDF.porcentajeC       = porcentaje;
-      datosParaPDF.rentaMensualC     = rentaMensual;
-      datosParaPDF.mesesHasta63_C    = mesesHasta63;
-      datosParaPDF.rentaTotalC       = rentaTotal;
+      datosParaPDF.salarioMensualC = salarioMensual;
+      datosParaPDF.porcentajeC     = porcentaje;
+      datosParaPDF.rentaMensualC   = rentaMensual;
+      datosParaPDF.mesesHasta63_C  = mesesHasta63;
+      datosParaPDF.rentaTotalC     = rentaTotal;
 
       menor55NoAplicaEl.style.display   = 'none';
 
@@ -598,15 +665,16 @@ form.addEventListener('submit', (event) => {
       return;
     }
 
-    // Si llegamos aquí, edad ≥55 pero no A, no B, no C
-    menor55NoAplicaEl.textContent = 'No cumples las condiciones para Prejubilación (o eres menor de 55 años).';
-    menor55NoAplicaEl.style.display = 'block';
-    botonPDF.style.display = 'none';
+    // Si llegamos aquí, edad ≥ 55 pero no cumple A, ni B, ni C
+    menor55NoAplicaEl.textContent    =
+      'No cumples las condiciones para Prejubilación (o eres menor de 55 años).';
+    menor55NoAplicaEl.style.display  = 'block';
+    botonPDF.style.display           = 'none';
   }
 });
 
 // -----------------------------------------------------------
-// 4) Generación de PDF con jsPDF
+// 6) Generación de PDF con jsPDF
 // -----------------------------------------------------------
 botonPDF.addEventListener('click', () => {
   const { jsPDF } = window.jspdf;
@@ -684,7 +752,7 @@ botonPDF.addEventListener('click', () => {
     y += 7;
     doc.setFontSize(11);
 
-    // VOLUNTARIA 50 días
+    // Indemnización VOLUNTARIA 50 días
     if (datosParaPDF.complementos > 0) {
       doc.text(
         '1) Indemnización VOLUNTARIA a 50 días – CON complementos',
@@ -727,7 +795,7 @@ botonPDF.addEventListener('click', () => {
       doc.text(vSin.neto.toFixed(2) + ' €', xValue, y); y += 8;
     }
 
-    // LEGAL unificado (100% exenta)
+    // Indemnización LEGAL (improcedente)
     doc.text('2) Indemnización LEGAL (improcedente)', xLabel, y);
     y += 6;
     doc.text('- Antes 12/02/2012 (45 días/año):', xLabel, y);
@@ -738,16 +806,16 @@ botonPDF.addEventListener('click', () => {
     doc.text(datosParaPDF.legTotalBruta.toFixed(2) + ' €', xValue, y); y += 5;
     doc.text('- Exento (100%):', xLabel, y);
     doc.text(datosParaPDF.legExento.toFixed(2) + ' €', xValue, y); y += 5;
-    doc.text('- Exceso (0.00):', xLabel, y);
-    doc.text('0.00 €', xValue, y); y += 5;
-    doc.text('- Base Imponible (0.00):', xLabel, y);
-    doc.text('0.00 €', xValue, y); y += 5;
-    doc.text('- IRPF aproximado (0.00):', xLabel, y);
-    doc.text('0.00 €', xValue, y); y += 5;
+    doc.text('- Exceso (0,00):', xLabel, y);
+    doc.text('0,00 €', xValue, y); y += 5;
+    doc.text('- Base Imponible (0,00):', xLabel, y);
+    doc.text('0,00 €', xValue, y); y += 5;
+    doc.text('- IRPF aproximado (0,00):', xLabel, y);
+    doc.text('0,00 €', xValue, y); y += 5;
     doc.text('- Indemnización Neta:', xLabel, y);
     doc.text(datosParaPDF.legNeto.toFixed(2) + ' €', xValue, y); y += 8;
 
-    // RETENCIONES Y DIFERENCIAS
+    // Retenciones y Diferencias
     doc.text('3) Retenciones y Diferencias', xLabel, y);
     y += 7;
     doc.setFontSize(11);
@@ -760,7 +828,7 @@ botonPDF.addEventListener('click', () => {
       doc.text(vCon.exento.toFixed(2) + ' €', xValue, y); y += 5;
       doc.text('- Voluntaria Exceso:', xLabel, y);
       doc.text(vCon.exceso.toFixed(2) + ' €', xValue, y); y += 5;
-      doc.text('- Voluntaria Base (70%):', xLabel, y);
+      doc.text('- Voluntaria Base Imponible:', xLabel, y);
       doc.text(vCon.baseImponible.toFixed(2) + ' €', xValue, y); y += 5;
       doc.text('- Voluntaria IRPF:', xLabel, y);
       doc.text(vCon.irpf.toFixed(2) + ' €', xValue, y); y += 5;
@@ -774,7 +842,7 @@ botonPDF.addEventListener('click', () => {
       doc.text(vSin.exento.toFixed(2) + ' €', xValue, y); y += 5;
       doc.text('- Voluntaria Exceso:', xLabel, y);
       doc.text(vSin.exceso.toFixed(2) + ' €', xValue, y); y += 5;
-      doc.text('- Voluntaria Base (70%):', xLabel, y);
+      doc.text('- Voluntaria Base Imponible:', xLabel, y);
       doc.text(vSin.baseImponible.toFixed(2) + ' €', xValue, y); y += 5;
       doc.text('- Voluntaria IRPF:', xLabel, y);
       doc.text(vSin.irpf.toFixed(2) + ' €', xValue, y); y += 5;
@@ -782,217 +850,82 @@ botonPDF.addEventListener('click', () => {
       doc.text(vSin.neto.toFixed(2) + ' €', xValue, y); y += 8;
     }
 
-    // Legal (100% exenta)
+    // Legal (100 % exenta)
     doc.text('- Legal Bruta:', xLabel, y);
     doc.text(datosParaPDF.legTotalBruta.toFixed(2) + ' €', xValue, y); y += 5;
     doc.text('- Legal Exento (100%):', xLabel, y);
     doc.text(datosParaPDF.legExento.toFixed(2) + ' €', xValue, y); y += 5;
     doc.text('- Legal Exceso:', xLabel, y);
-    doc.text('0.00 €', xValue, y); y += 5;
-    doc.text('- Legal Base (0.00):', xLabel, y);
-    doc.text('0.00 €', xValue, y); y += 5;
-    doc.text('- Legal IRPF (0.00):', xLabel, y);
-    doc.text('0.00 €', xValue, y); y += 5;
+    doc.text('0,00 €', xValue, y); y += 5;
+    doc.text('- Legal Base Imponible:', xLabel, y);
+    doc.text('0,00 €', xValue, y); y += 5;
+    doc.text('- Legal IRPF:', xLabel, y);
+    doc.text('0,00 €', xValue, y); y += 5;
     doc.text('- Legal Neta:', xLabel, y);
     doc.text(datosParaPDF.legNeto.toFixed(2) + ' €', xValue, y); y += 8;
 
     // Diferencia (Voluntaria – Legal)
     {
-      const difExento = parseFloat(retDifExentoEl.textContent);
-      const difExceso = parseFloat(retDifExcesoEl.textContent);
-      const difBase   = parseFloat(retDifBaseEl.textContent);
-      const difIrpf   = parseFloat(retDifIrpfEl.textContent);
-      const difNeto   = parseFloat(retDifNetoEl.textContent);
       doc.text('- Diferencia Bruta:', xLabel, y);
       doc.text(retDifBrutaEl.textContent + ' €', xValue, y); y += 5;
       doc.text('- Diferencia Exento:', xLabel, y);
-      doc.text(difExento.toFixed(2) + ' €', xValue, y); y += 5;
+      doc.text(retDifExentoEl.textContent + ' €', xValue, y); y += 5;
       doc.text('- Diferencia Exceso:', xLabel, y);
-      doc.text(difExceso.toFixed(2) + ' €', xValue, y); y += 5;
-      doc.text('- Diferencia Base (70%):', xLabel, y);
-      doc.text(difBase.toFixed(2) + ' €', xValue, y); y += 5;
-      doc.text('- Diferencia IRPF (progresivo):', xLabel, y);
-      doc.text(difIrpf.toFixed(2) + ' €', xValue, y); y += 5;
-      doc.text('- Diferencia Neta (progresivo):', xLabel, y);
-      doc.text(difNeto.toFixed(2) + ' €', xValue, y); y += 8;
+      doc.text(retDifExcesoEl.textContent + ' €', xValue, y); y += 5;
+      doc.text('- Diferencia Base Imponible:', xLabel, y);
+      doc.text(retDifBaseEl.textContent + ' €', xValue, y); y += 5;
+      doc.text('- Diferencia IRPF (por tramos):', xLabel, y);
+      doc.text(datosParaPDF.retDifIrpfTramos.toFixed(2) + ' €', xValue, y); y += 5;
+      doc.text('- Diferencia Neta (por tramos):', xLabel, y);
+      doc.text(datosParaPDF.retDifNetoTramos.toFixed(2) + ' €', xValue, y); y += 8;
     }
 
-    // IRPF 15% (simulación) sobre Diferencia Bruta
-    {
-      doc.text('- Diferencia IRPF 15% (ejemplo):', xLabel, y);
-      doc.text(datosParaPDF.retDifIrpf15.toFixed(2) + ' €', xValue, y); y += 5;
-      doc.text('- Diferencia Neta tras 15% IRPF:', xLabel, y);
-      doc.text(datosParaPDF.retDifNeto15.toFixed(2) + ' €', xValue, y); y += 8;
-    }
-  } else {
-    //--------------------------------------------
-    //  === MAYORES DE 55: A/B/C ===
-    //--------------------------------------------
-    doc.setFontSize(13);
-    doc.text('Mayor de 55 años – Prejubilación/Indemnización', xLabel, y);
-    y += 7;
-    doc.setFontSize(11);
+    // Filas NUEVAS:
+    doc.text('- Total sin retención:', xLabel, y);
+    doc.text(datosParaPDF.retTotalSinVol.toFixed(2) + ' €', xValue + 50, y); y += 5;
+    doc.text('  Voluntaria', xLabel + 10, y); y -= 5;
+    doc.text(datosParaPDF.retTotalSinLeg.toFixed(2) + ' €', xValue + 110, y); y += 5;
+    doc.text('  Legal', xLabel + 10, y); y -= 5;
+    doc.text(datosParaPDF.retTotalSinDif.toFixed(2) + ' €', xValue + 170, y); y += 8;
 
-    // A) Edad ≥ 61
-    if (datosParaPDF.edad >= 61 && datosParaPDF.antiguedad >= 10) {
-      doc.text(
-        'A) 61 o más años y antigüedad ≥ 10 años → Indemnización 30 días/año',
-        xLabel,
-        y
-      );
-      y += 6;
-      doc.text(
-        `- Indemnización Bruta (30días × antigüedad): ${datosParaPDF.ind61LibreBruta.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Tope 24 mensualidades: ${datosParaPDF.ind61Tope24m.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Tope 75 000 €: 75 000,00 €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Indemnización Bruta Aplicada: ${datosParaPDF.ind61BrutaAplicada.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Exento: ${datosParaPDF.desg61.exento.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Exceso: ${datosParaPDF.desg61.exceso.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Base Imponible (70 % del exceso): ${datosParaPDF.desg61.baseImponible.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- IRPF aproximado: ${datosParaPDF.desg61.irpf.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Indemnización Neta: ${datosParaPDF.desg61.neto.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 10;
-    }
-    // B) Edad 55–58
-    else if (datosParaPDF.edad >= 55 && datosParaPDF.edad <= 58 && datosParaPDF.antiguedad >= 10) {
-      doc.text(
-        'B) 55 – 58 años y antigüedad ≥ 10 años → Renta temporal mensual al 75 %',
-        xLabel,
-        y
-      );
-      y += 6;
-      doc.text(
-        `- Salario Mensual de Referencia: ${datosParaPDF.salarioMensualB.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Porcentaje aplicado: 75 %`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Renta Mensual: ${datosParaPDF.rentaMensualB.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Duración (meses hasta los 63 años): ${datosParaPDF.mesesHasta63_B} meses`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Renta Total Temporal: ${datosParaPDF.rentaTotalB.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 10;
-    }
-    // C) Edad 59–60
-    else if (datosParaPDF.edad >= 59 && datosParaPDF.edad <= 60 && datosParaPDF.antiguedad >= 10) {
-      doc.text(
-        'C) 59 – 60 años y antigüedad ≥ 10 años → Renta temporal mensual al 80 %',
-        xLabel,
-        y
-      );
-      y += 6;
-      doc.text(
-        `- Salario Mensual de Referencia: ${datosParaPDF.salarioMensualC.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Porcentaje aplicado: 80 %`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Renta Mensual: ${datosParaPDF.rentaMensualC.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Duración (meses hasta los 63 años): ${datosParaPDF.mesesHasta63_C} meses`,
-        xLabel,
-        y
-      );
-      y += 5;
-      doc.text(
-        `- Renta Total Temporal: ${datosParaPDF.rentaTotalC.toFixed(2)} €`,
-        xLabel,
-        y
-      );
-      y += 10;
-    }
-    // D) Menos de 55 → no debería llegar aquí
-    else {
-      doc.setTextColor(192, 57, 43);
-      doc.text(
-        'No cumples las condiciones para Prejubilación (o eres menor de 55 años).',
-        xLabel,
-        y
-      );
-      y += 10;
-      doc.setTextColor(0, 0, 0);
-    }
+    doc.text('- Total tras IRPF:', xLabel, y);
+    doc.text(datosParaPDF.retTotalConVol.toFixed(2) + ' €', xValue + 50, y); y += 5;
+    doc.text('  Voluntaria', xLabel + 10, y); y -= 5;
+    doc.text(datosParaPDF.retTotalConLeg.toFixed(2) + ' €', xValue + 110, y); y += 5;
+    doc.text('  Legal', xLabel + 10, y); y -= 5;
+    doc.text(datosParaPDF.retTotalConDif.toFixed(2) + ' €', xValue + 170, y); y += 10;
+
+    // Bloque ADICIONAL: Totales globales combinados
+    doc.text(
+      `* Total global sin retención (Legal + Diferencia): ${datosParaPDF.totalGlobalSin.toFixed(2)} €`,
+      xLabel,
+      y
+    );
+    y += 6;
+    doc.text(
+      `* Total global tras IRPF (Legal + Diferencia): ${datosParaPDF.totalGlobalCon.toFixed(2)} €`,
+      xLabel,
+      y
+    );
+    y += 10;
+
+    // Pie de nota de retención
+    doc.setFontSize(9);
+    doc.text(
+      '* El IRPF (por tramos) corresponde al tipo marginal máximo según Hacienda. ' +
+      'La retención real varía según tu situación familiar (hijos, estado civil, etc.).',
+      xLabel,
+      y
+    );
+    y += 10;
   }
 
-  // Pie de nota
+  // Pie de nota general
   doc.setFontSize(9);
   doc.text(
     '* Estos cálculos son aproximados. Consulta con un asesor laboral y fiscal.',
-    xLabel,
-    y
+    10,
+    y + 5
   );
 
   // Descargar el PDF
@@ -1000,12 +933,12 @@ botonPDF.addEventListener('click', () => {
 });
 
 // -----------------------------------------------------------
-// 5) [MÁSCARA] Auto‐inserción de "/" en campos de fecha dd/MM/yyyy
+// 7) [MÁSCARA] Auto‐inserción de "/" en campos de fecha dd/MM/yyyy
 // -----------------------------------------------------------
 
-/**
+/** 
  * Cada vez que el usuario escriba en el campo de fecha, se formatea
- * para que aparezca dd/MM/yyyy y las barras se inserten automáticamente.
+ * para que aparezca dd/MM/yyyy y las barras se inserten automáticamente. 
  */
 function aplicarMascaraFecha(inputElement) {
   inputElement.addEventListener('input', (event) => {
@@ -1047,7 +980,7 @@ function aplicarMascaraFecha(inputElement) {
 }
 
 // -----------------------------------------------------------
-// 6) Invocación de la máscara sobre los tres campos de fecha
+// 8) Invocación de la máscara sobre los tres campos de fecha
 // -----------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   const fechaNacimientoEl = document.getElementById('fechaNacimiento');
